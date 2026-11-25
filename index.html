@@ -264,8 +264,10 @@ function enviar(texto) {
     const datos = enc.encode(texto + '\n');
     for (let i = 0; i < datos.length; i += 20) {         // pedazos de 20 bytes (MTU mínimo)
       const parte = datos.slice(i, i + 20);
-      if (rxChar.properties.writeWithoutResponse && rxChar.writeValueWithoutResponse) await rxChar.writeValueWithoutResponse(parte);
+      // con respuesta: cada pedazo espera la confirmación de la XIAO antes de mandar el siguiente
+      if (rxChar.properties.write && rxChar.writeValueWithResponse) await rxChar.writeValueWithResponse(parte);
       else await rxChar.writeValue(parte);
+      await new Promise(r => setTimeout(r, 30));          // pausa corta para que la XIAO lo procese
     }
   }).catch(e => { escribirLog('Error al enviar: ' + e.message + '\n', 'sys'); throw e; });
   return cola;
