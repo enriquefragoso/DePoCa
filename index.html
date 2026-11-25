@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#0f766e">
-<title>VitaSense Directorio</title>
+<title>DePoCa</title>
 <style>
   :root {
     --fondo: #f3f6f6; --tarjeta: #fff; --texto: #13201f; --suave: #5d6b6a; --borde: #dde5e4;
@@ -59,12 +59,32 @@
   .chk { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--suave); margin-top: 8px; }
   .chk input { width: auto; }
   #sinBle { display: none; }
+  .ver { font-size: 11px; opacity: .85; font-weight: 400; }
+  .chip { display: none; font-size: 11px; font-weight: 700; background: #fbbf24; color: #3b2a00; border-radius: 6px; padding: 2px 6px; margin-left: 6px; vertical-align: 2px; }
+  body.dev .chip { display: inline-block; }
+  nav { display: none; } body.dev nav { display: flex; }
+  footer { max-width: 640px; margin: 4px auto 24px; padding: 0 14px; text-align: center; color: var(--suave); font-size: 12px; line-height: 1.7; }
+  footer button { background: none; color: var(--acento); padding: 6px 8px; font-size: 13px; text-decoration: underline; }
+  #splash { position: fixed; inset: 0; background: var(--acento); color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center;
+            z-index: 50; transition: opacity .35s; text-align: center; }
+  #splash .logo { width: 72px; height: 72px; border-radius: 20px; background: rgba(255,255,255,.16); display: grid; place-items: center; font-size: 38px; margin-bottom: 14px; }
+  #splash h1 { margin: 0; font-size: 30px; } #splash p { margin: 6px 24px 0; opacity: .85; max-width: 320px; line-height: 1.4; }
+  #splash .v { margin-top: 18px; font-size: 14px; background: rgba(255,255,255,.18); padding: 5px 12px; border-radius: 99px; }
+  #splash.fuera { opacity: 0; pointer-events: none; }
+  .paramForm { display: flex; gap: 8px; margin-top: 10px; } .paramForm input { flex: 1; min-width: 0; }
+  .soloPrueba { border-top: 1px dashed var(--borde); margin-top: 12px; padding-top: 10px; }
 </style>
 </head>
 <body>
+<div id="splash" onclick="this.classList.add('fuera')">
+  <div class="logo">♥</div>
+  <h1>DePoCa</h1>
+  <p>Detector de caídas portátil para adultos mayores sin supervisión</p>
+  <div class="v" id="splashVer"></div>
+</div>
 <header>
   <div class="fila">
-    <div class="marca">VitaSense<small>Directorio de emergencia</small></div>
+    <div class="marca">DePoCa<span class="chip">DEV</span><small>Contactos de emergencia · <span class="ver" id="verApp"></span></small></div>
     <span id="estado" class="pildora">Desconectado</span>
     <button id="btnConectar" class="blanco">Conectar</button>
   </div>
@@ -86,7 +106,7 @@
   <section id="v-contactos" class="vista activa">
     <div class="tarjeta">
       <h2>Contactos de emergencia</h2>
-      <p class="nota">Si hay una caída o se presiona el SOS, se manda SMS a todos y se llama en este orden hasta que alguien conteste. Máximo 5.</p>
+      <p class="nota">Si hay una caída o se presiona el SOS, se avisa en este orden: a cada contacto se le manda un SMS y luego se le llama. <b>Para confirmar, el contacto presiona 1 o cuelga enseguida.</b> Si la llamada sigue conectada sin que presione nada, es el buzón de voz y se pasa al siguiente. Los avisos siguen hasta que alguien presione el botón del dispositivo. Máximo 5.</p>
       <div id="lista"></div>
     </div>
 
@@ -114,6 +134,13 @@
       </div>
       <div id="avisoSync" class="aviso"></div>
     </div>
+
+    <div class="tarjeta">
+      <h2>Avisar a los contactos</h2>
+      <p class="nota">Manda un SMS desde el dispositivo a cada contacto explicando que es contacto de emergencia y que, si DePoCa le llama, conteste y presione 1. Hazlo después de agregar o cambiar contactos. Usa saldo de la SIM.</p>
+      <button id="btnAvisar" class="sec" style="width:100%" disabled>Mandar SMS de aviso</button>
+      <div id="avisoAvisar" class="aviso"></div>
+    </div>
   </section>
 
   <!-- ===== Dispositivo ===== -->
@@ -122,18 +149,52 @@
       <h2>Pruebas rápidas</h2>
       <p class="nota">La respuesta aparece en la pestaña Monitor.</p>
       <div class="rejilla">
+        <button class="sec cmd" data-cmd="info" disabled>Información</button>
         <button class="sec cmd" data-cmd="estado" disabled>Estado del módem</button>
         <button class="sec cmd" data-cmd="caidas" disabled>Caídas detectadas</button>
-        <button class="sec cmd" data-cmd="modo prueba" disabled>Modo prueba</button>
-        <button class="sec cmd" data-cmd="modo real" disabled>Modo real</button>
         <button class="sec cmd" data-cmd="alertas" disabled>Tiempos de alertas</button>
+        <button class="sec cmd" data-cmd="contactos" disabled>Contactos en la XIAO</button>
         <button class="sec cmd" data-cmd="led" disabled>Probar LED</button>
       </div>
-      <p class="nota" style="margin-top:10px"><b>Modo prueba:</b> las caídas solo vibran, no mandan nada. <b>Modo real:</b> las caídas mandan la alerta.</p>
+    </div>
+    <div class="tarjeta">
+      <h2>Modo del dispositivo</h2>
+      <p class="nota"><b>Real</b> (al encender siempre arranca así): parámetros fijos del código.
+        <b>Prueba</b>: la misma secuencia, pero puedes cambiar los parámetros (por ejemplo <code>buzon</code>: segundos conectada sin tecla para tomarla como buzón). Con <code>simular = 1</code> no llama ni manda SMS de verdad.</p>
+      <div class="rejilla">
+        <button class="sec cmd" data-cmd="modo prueba" disabled>Modo prueba</button>
+        <button class="sec cmd" data-cmd="modo real" disabled>Modo real</button>
+      </div>
+      <div class="soloPrueba">
+        <h2>Parámetros (solo en modo prueba)</h2>
+        <div class="rejilla">
+          <button class="sec cmd" data-cmd="param" disabled>Ver parámetros</button>
+          <button class="sec cmd" data-cmd="param reset" disabled>Valores fijos</button>
+          <button class="sec cmd" data-cmd="param simular 1" disabled>Simular: sí</button>
+          <button class="sec cmd" data-cmd="param simular 0" disabled>Simular: no</button>
+        </div>
+        <form class="paramForm" id="formParam">
+          <input id="pNombre" list="listaParams" placeholder="parámetro" autocapitalize="off" autocorrect="off" spellcheck="false">
+          <input id="pValor" inputmode="decimal" placeholder="valor" style="max-width:90px">
+          <button id="btnParam" disabled>Cambiar</button>
+        </form>
+        <datalist id="listaParams">
+          <option value="cuenta"><option value="timbre"><option value="buzon"><option value="espera"><option value="pausa">
+          <option value="sms"><option value="simular"><option value="sos"><option value="libre"><option value="libre_ms">
+          <option value="impacto"><option value="fuerte"><option value="ventana"><option value="asentar"><option value="quieto_ms">
+          <option value="quieto_g"><option value="quieto_giro"><option value="angulo">
+        </datalist>
+        <div class="rejilla" style="margin-top:8px">
+          <button class="sec cmd" data-cmd="contesto" disabled>Simular: presiona 1</button>
+          <button class="sec cmd" data-cmd="colgo" disabled>Simular: cuelga rápido</button>
+          <button class="sec cmd" data-cmd="buzon" disabled>Simular: buzón de voz</button>
+          <button class="sec cmd" data-cmd="parar" disabled>Parar la alerta</button>
+        </div>
+      </div>
     </div>
     <div class="tarjeta">
       <h2>Simular una alerta</h2>
-      <p class="nota">Empieza la cuenta de 10 s (vibración). Si nadie la cancela con el botón, se mandan SMS reales y se llama a los contactos.</p>
+      <p class="nota">Empieza la cuenta de 10 s (vibración) y luego los avisos (SMS + llamada a cada contacto), igual que una caída. Solo se detiene con el botón del dispositivo (o con "Parar" en modo prueba). En modo real llama y manda SMS de verdad.</p>
       <button id="btnAlerta" class="peligro" style="width:100%" disabled>Simular alerta</button>
     </div>
   </section>
@@ -151,12 +212,17 @@
     </div>
   </section>
 </main>
+<footer>
+  <div id="pieVersion"></div>
+  <button id="btnModoApp" type="button"></button>
+</footer>
 
 <script>
 // ---------- Protocolo de la XIAO (servicio UART de Nordic) ----------
 const NUS = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
 const RX  = '6e400002-b5a3-f393-e0a9-e50e24dcca9e';   // la app escribe aquí
 const TX  = '6e400003-b5a3-f393-e0a9-e50e24dcca9e';   // la XIAO responde aquí
+const APP_VERSION = '2.2.0';
 const MAX = 5;
 const $ = id => document.getElementById(id);
 const enc = new TextEncoder(), dec = new TextDecoder();
@@ -164,14 +230,38 @@ const enc = new TextEncoder(), dec = new TextDecoder();
 let dispositivo = null, rxChar = null, conectado = false;
 let pendienteTx = '', esperando = null, recolector = null;
 let cola = Promise.resolve(), timerSync = null, sincronizando = false;
+let verDispositivo = '';
+
+// ---------- Versión y modo usuario / desarrollador ----------
+let modoDev = false;
+try { modoDev = (localStorage.getItem('depoca_dev') ?? localStorage.getItem('vs_dev')) === '1'; } catch (e) {}
+function pintarVersion() {
+  $('verApp').textContent = 'v' + APP_VERSION;
+  $('splashVer').textContent = 'App v' + APP_VERSION + (modoDev ? ' · desarrollador' : '');
+  $('pieVersion').textContent = 'DePoCa · Detector de caídas portátil para adultos mayores sin supervisión · app v' + APP_VERSION +
+    (verDispositivo ? ' · dispositivo v' + verDispositivo : (conectado ? ' · dispositivo: firmware anterior' : ''));
+}
+function aplicarModo() {
+  document.body.classList.toggle('dev', modoDev);
+  $('btnModoApp').textContent = modoDev ? 'Volver a modo usuario' : 'Modo desarrollador';
+  if (!modoDev && vistaActual !== 'contactos') irA('contactos');
+  pintarVersion();
+}
+$('btnModoApp').onclick = () => {
+  modoDev = !modoDev;
+  try { localStorage.setItem('depoca_dev', modoDev ? '1' : '0'); } catch (e) {}
+  if (!modoDev && conectado) enviar('monitor off').catch(() => {});     // deja de mandar el monitor
+  aplicarModo();
+  window.scrollTo(0, 0);
+};
 
 // ---------- Contactos guardados en el teléfono ----------
 let contactos = [];
-try { contactos = JSON.parse(localStorage.getItem('vs_contactos') || '[]'); } catch (e) { contactos = []; }
+try { contactos = JSON.parse(localStorage.getItem('depoca_contactos') ?? localStorage.getItem('vs_contactos') ?? '[]'); } catch (e) { contactos = []; }
 let pendientes = false;
-try { pendientes = localStorage.getItem('vs_pendientes') === '1'; } catch (e) {}
+try { pendientes = (localStorage.getItem('depoca_pendientes') ?? localStorage.getItem('vs_pendientes')) === '1'; } catch (e) {}
 function guardarLocal() {
-  try { localStorage.setItem('vs_contactos', JSON.stringify(contactos)); localStorage.setItem('vs_pendientes', pendientes ? '1' : '0'); } catch (e) {}
+  try { localStorage.setItem('depoca_contactos', JSON.stringify(contactos)); localStorage.setItem('depoca_pendientes', pendientes ? '1' : '0'); } catch (e) {}
 }
 const soloDigitos = t => (t || '').replace(/\D/g, '');
 function telCorto(t) { let d = soloDigitos(t); if (d.length === 12 && d.startsWith('52')) d = d.slice(2); return d; }
@@ -251,10 +341,10 @@ function alRecibir(texto) {
   let p;
   while ((p = pendienteTx.indexOf('\n')) >= 0) {
     const linea = pendienteTx.slice(0, p).replace(/\r$/, ''); pendienteTx = pendienteTx.slice(p + 1);
-    const esResp = /^(OK|ERR) /.test(linea);
+    const esResp = /^(OK|ERR|VER) /.test(linea) || /^C:\d,/.test(linea);
     escribirLog(linea + '\n', esResp ? 'ok' : '');
-    if (esResp && esperando) { const r = esperando; esperando = null; r(linea); }
     if (recolector) recolector(linea);
+    if (esperando && esperando.cumple(linea)) { const r = esperando.resolver; esperando = null; r(linea); }
   }
 }
 function enviar(texto) {
@@ -272,19 +362,23 @@ function enviar(texto) {
   }).catch(e => { escribirLog('Error al enviar: ' + e.message + '\n', 'sys'); throw e; });
   return cola;
 }
-function enviarYEsperar(texto, ms = 3000) {
+// Manda una línea y espera la respuesta que cumpla 'cumple' (por defecto "OK ..." o "ERR ...")
+function enviarYEsperar(texto, ms = 3000, cumple = l => /^(OK|ERR) /.test(l)) {
   return new Promise(resolve => {
     const t = setTimeout(() => { esperando = null; resolve('SIN RESPUESTA'); }, ms);
-    esperando = l => { clearTimeout(t); resolve(l); };
+    esperando = { cumple, resolver: l => { clearTimeout(t); resolve(l); } };
     enviar(texto).catch(() => { clearTimeout(t); esperando = null; resolve('ERROR'); });
   });
 }
 function ponerEstado(txt, clase) { const e = $('estado'); e.textContent = txt; e.className = 'pildora' + (clase ? ' ' + clase : ''); }
 function habilitar(on) {
   conectado = on;
-  ['btnSync', 'btnTraer', 'btnAlerta', 'cmd', 'btnEnviar'].forEach(id => $(id).disabled = !on);
+  ['btnSync', 'btnTraer', 'btnAlerta', 'cmd', 'btnEnviar', 'btnAvisar'].forEach(id => $(id).disabled = !on);
   document.querySelectorAll('.cmd').forEach(b => b.disabled = !on);
   $('btnConectar').textContent = on ? 'Desconectar' : 'Conectar';
+  $('btnParam').disabled = !on;
+  if (!on) verDispositivo = '';
+  pintarVersion();
   ponerEstado(on ? 'Conectado' : 'Desconectado', on ? 'on' : '');
   estadoSync();
 }
@@ -292,7 +386,7 @@ async function conectar() {
   if (!navigator.bluetooth) { $('sinBle').style.display = 'block'; return; }
   try {
     ponerEstado('Buscando…', 'busy');
-    dispositivo = await navigator.bluetooth.requestDevice({ filters: [{ namePrefix: 'VitaSense' }, { services: [NUS] }], optionalServices: [NUS] });
+    dispositivo = await navigator.bluetooth.requestDevice({ filters: [{ namePrefix: 'DePoCa' }, { services: [NUS] }], optionalServices: [NUS] });
     dispositivo.addEventListener('gattserverdisconnected', alDesconectar);
     ponerEstado('Conectando…', 'busy');
     const srv = await dispositivo.gatt.connect();
@@ -303,14 +397,17 @@ async function conectar() {
     await txChar.startNotifications();
     habilitar(true);
     escribirLog('--- conectado a ' + (dispositivo.name || 'XIAO') + ' ---\n', 'sys');
-    if (pendientes) sincronizar();
-    else if (vistaActual === 'monitor') enviar('monitor').catch(() => {});
+    const rv = await enviarYEsperar('VER', 2500, l => l.startsWith('VER '));
+    if (rv.startsWith('VER ')) verDispositivo = rv.slice(4).trim();
+    pintarVersion();
+    if (pendientes) await sincronizar();
+    if (modoDev && vistaActual === 'monitor') enviar('monitor').catch(() => {});
   } catch (e) {
     ponerEstado('Desconectado');
     if (e.name !== 'NotFoundError') escribirLog('No se pudo conectar: ' + e.message + '\n', 'sys');
   }
 }
-function alDesconectar() { rxChar = null; esperando = null; escribirLog('--- desconectado ---\n', 'sys'); habilitar(false); }
+function alDesconectar() { rxChar = null; esperando = null; recolector = null; escribirLog('--- desconectado ---\n', 'sys'); habilitar(false); }
 $('btnConectar').onclick = () => {
   if (conectado && dispositivo) dispositivo.gatt.disconnect(); else conectar();
 };
@@ -335,23 +432,40 @@ async function sincronizar() {
 }
 $('btnSync').onclick = sincronizar;
 
-// Traer los contactos que la XIAO ya tiene (lee la respuesta del comando "contactos")
+// Traer los contactos que la XIAO ya tiene (LIST -> C:prio,tel,nombre ... OK LIST)
 $('btnTraer').onclick = async () => {
   if (!conectado) return;
   aviso('avisoSync', 'info', 'Leyendo los contactos del dispositivo…');
   const encontrados = [];
   recolector = l => {
-    const m = l.match(/^#\s+([1-5])\.\s+(.+?)\s{2,}(\+?\d{10,13})\s*$/);
-    if (m) encontrados.push({ p: +m[1], nombre: m[2] === '(sin nombre)' ? 'Contacto ' + m[1] : m[2], tel: telCorto(m[3]) });
+    const m = l.match(/^C:([1-5]),(\+?\d{10,13}),(.*)$/);
+    if (m) encontrados.push({ p: +m[1], nombre: m[3].trim() || 'Contacto ' + m[1], tel: telCorto(m[2]) });
   };
-  try { await enviar('contactos'); } catch (e) {}
-  await new Promise(r => setTimeout(r, 2000));
+  const r = await enviarYEsperar('LIST', 4000, l => l === 'OK LIST');
   recolector = null;
-  if (!encontrados.length) { aviso('avisoSync', 'info', 'El dispositivo no tiene contactos guardados (o no respondió).'); return; }
+  if (r !== 'OK LIST') { aviso('avisoSync', 'error', 'El dispositivo no respondió. Si tiene un firmware anterior a 1.5, actualízalo.'); return; }
+  if (!encontrados.length) { aviso('avisoSync', 'info', 'El dispositivo no tiene contactos guardados.'); return; }
   encontrados.sort((a, b) => a.p - b.p);
   contactos = encontrados.slice(0, MAX).map(c => ({ nombre: c.nombre, tel: c.tel }));
   pendientes = false; guardarLocal(); cancelarEdicion(); pintarLista();
   aviso('avisoSync', 'ok', `Se trajeron ${contactos.length} contacto(s) del dispositivo.`);
+};
+
+// SMS de aviso a los contactos (AVISO -> OK AVISO enviados/total)
+$('btnAvisar').onclick = async e => {
+  const b = e.currentTarget;
+  if (b.dataset.confirmar !== '1') {
+    b.dataset.confirmar = '1'; b.textContent = 'Toca otra vez para mandar ' + contactos.length + ' SMS';
+    setTimeout(() => { b.dataset.confirmar = ''; b.textContent = 'Mandar SMS de aviso'; }, 4000); return;
+  }
+  b.dataset.confirmar = ''; b.textContent = 'Mandar SMS de aviso'; b.disabled = true;
+  if (pendientes) await sincronizar();
+  aviso('avisoAvisar', 'info', 'Mandando los SMS… (unos segundos por contacto)');
+  const r = await enviarYEsperar('AVISO', 90000, l => /^(OK|ERR) AVISO/.test(l));
+  b.disabled = !conectado;
+  if (r.startsWith('OK AVISO')) { const [ok, n] = r.slice(9).split('/'); aviso('avisoAvisar', ok === n ? 'ok' : 'error', ok === n ? `Listo: se avisó a ${n} contacto(s).` : `Solo se mandaron ${ok} de ${n}. Revisa la señal o el saldo.`); }
+  else if (r.startsWith('ERR AVISO')) aviso('avisoAvisar', 'error', 'Hay una alerta en curso; inténtalo cuando termine.');
+  else aviso('avisoAvisar', 'error', 'El dispositivo no respondió. Necesita el firmware 1.7 o más nuevo.');
 };
 
 // ---------- Dispositivo y monitor ----------
@@ -368,18 +482,26 @@ $('btnAlerta').onclick = e => {
 function mandarComando(t) { escribirLog('> ' + t + '\n', 'tx'); enviar(t).catch(() => {}); }
 $('formCmd').onsubmit = e => { e.preventDefault(); const t = $('cmd').value.trim(); if (!t) return; $('cmd').value = ''; mandarComando(t); };
 $('btnLimpiar').onclick = () => { $('log').textContent = ''; };
+$('formParam').onsubmit = e => {
+  e.preventDefault();
+  const n = $('pNombre').value.trim().toLowerCase(), v = $('pValor').value.trim().replace(',', '.');
+  if (!n || !v) return;
+  irA('monitor'); mandarComando('param ' + n + ' ' + v);
+  $('pValor').value = '';
+};
 
 let vistaActual = 'contactos';
 function irA(v) {
   vistaActual = v;
   document.querySelectorAll('nav button').forEach(b => b.classList.toggle('activa', b.dataset.vista === v));
   document.querySelectorAll('.vista').forEach(s => s.classList.toggle('activa', s.id === 'v-' + v));
-  if (v === 'monitor' && conectado) enviar('monitor').catch(() => {});   // enciende el espejo del monitor serie
+  if (v === 'monitor' && conectado && modoDev) enviar('monitor').catch(() => {});   // enciende el espejo del monitor serie
 }
 document.querySelectorAll('nav button').forEach(b => b.onclick = () => irA(b.dataset.vista));
 
 if (!navigator.bluetooth) $('sinBle').style.display = 'block';
-pintarLista(); estadoSync();
+pintarLista(); estadoSync(); aplicarModo();
+setTimeout(() => $('splash').classList.add('fuera'), 1400);     // la versión se ve al abrir
 </script>
 </body>
 </html>
