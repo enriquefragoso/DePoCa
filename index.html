@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0f766e">
+<title>VitaSense Directorio</title>
+<style>
+  :root {
+    --fondo: #f3f6f6; --tarjeta: #fff; --texto: #13201f; --suave: #5d6b6a; --borde: #dde5e4;
+    --acento: #0f766e; --acento2: #e6f4f2; --rojo: #c0392b; --rojo2: #fdecea; --ambar: #b7791f;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: -apple-system, system-ui, "Segoe UI", Roboto, sans-serif; background: var(--fondo); color: var(--texto);
+         padding-bottom: env(safe-area-inset-bottom); -webkit-tap-highlight-color: transparent; }
+  header { background: var(--acento); color: #fff; padding: calc(14px + env(safe-area-inset-top)) 16px 14px; }
+  .fila { display: flex; align-items: center; gap: 10px; }
+  .marca { font-weight: 700; font-size: 19px; letter-spacing: .2px; margin-right: auto; }
+  .marca small { display: block; font-weight: 400; font-size: 12px; opacity: .8; }
+  .pildora { font-size: 12px; padding: 4px 10px; border-radius: 99px; background: rgba(255,255,255,.18); white-space: nowrap; }
+  .pildora::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #f87171; margin-right: 6px; vertical-align: 0; }
+  .pildora.on::before { background: #4ade80; }
+  .pildora.busy::before { background: #fbbf24; }
+  button { font: inherit; border: 0; border-radius: 10px; padding: 10px 14px; cursor: pointer; background: var(--acento); color: #fff; font-weight: 600; }
+  button.blanco { background: #fff; color: var(--acento); }
+  button.sec { background: var(--acento2); color: var(--acento); }
+  button.peligro { background: var(--rojo2); color: var(--rojo); }
+  button.mini { padding: 6px 9px; font-size: 14px; border-radius: 8px; }
+  button:disabled { opacity: .45; cursor: default; }
+  nav { display: flex; background: var(--tarjeta); border-bottom: 1px solid var(--borde); position: sticky; top: 0; z-index: 4; }
+  nav button { flex: 1; background: none; color: var(--suave); border-radius: 0; padding: 12px 4px; border-bottom: 3px solid transparent; font-weight: 600; }
+  nav button.activa { color: var(--acento); border-bottom-color: var(--acento); }
+  main { max-width: 640px; margin: 0 auto; padding: 14px; }
+  .vista { display: none; } .vista.activa { display: block; }
+  .tarjeta { background: var(--tarjeta); border: 1px solid var(--borde); border-radius: 14px; padding: 14px; margin-bottom: 12px; }
+  h2 { font-size: 15px; margin: 0 0 4px; } .nota { color: var(--suave); font-size: 13px; margin: 0 0 10px; line-height: 1.4; }
+  .contacto { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-top: 1px solid var(--borde); }
+  .contacto:first-of-type { border-top: 0; }
+  .prio { width: 30px; height: 30px; border-radius: 50%; background: var(--acento2); color: var(--acento); display: grid; place-items: center; font-weight: 700; flex: none; }
+  .datos { flex: 1; min-width: 0; } .datos b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .datos span { color: var(--suave); font-size: 14px; }
+  .acciones { display: flex; gap: 4px; }
+  .vacio { color: var(--suave); text-align: center; padding: 18px 0; font-size: 14px; }
+  label { display: block; font-size: 13px; color: var(--suave); margin: 8px 0 4px; }
+  input { width: 100%; font: inherit; font-size: 16px; padding: 10px 12px; border: 1px solid var(--borde); border-radius: 10px; background: #fff; color: var(--texto); }
+  input:focus { outline: 2px solid var(--acento); border-color: transparent; }
+  .botones { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; } .botones button { flex: 1; min-width: 130px; }
+  .aviso { font-size: 13px; padding: 9px 11px; border-radius: 10px; margin-top: 10px; display: none; }
+  .aviso.ok { display: block; background: var(--acento2); color: var(--acento); }
+  .aviso.error { display: block; background: var(--rojo2); color: var(--rojo); }
+  .aviso.info { display: block; background: #fdf6e7; color: var(--ambar); }
+  .rejilla { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .rejilla button { padding: 14px 8px; }
+  #log { background: #0d1514; color: #cfe3df; font: 12.5px/1.45 ui-monospace, Menlo, Consolas, monospace; border-radius: 12px; padding: 10px;
+         height: 52vh; overflow-y: auto; white-space: pre-wrap; word-break: break-word; margin: 0; }
+  #log .tx { color: #7dd3fc; } #log .sys { color: #fcd34d; } #log .ok { color: #86efac; }
+  .entrada { display: flex; gap: 8px; margin-top: 10px; } .entrada input { font-family: ui-monospace, Menlo, Consolas, monospace; }
+  .chk { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--suave); margin-top: 8px; }
+  .chk input { width: auto; }
+  #sinBle { display: none; }
+</style>
+</head>
+<body>
+<header>
+  <div class="fila">
+    <div class="marca">VitaSense<small>Directorio de emergencia</small></div>
+    <span id="estado" class="pildora">Desconectado</span>
+    <button id="btnConectar" class="blanco">Conectar</button>
+  </div>
+</header>
+<nav>
+  <button data-vista="contactos" class="activa">Contactos</button>
+  <button data-vista="dispositivo">Dispositivo</button>
+  <button data-vista="monitor">Monitor</button>
+</nav>
+
+<main>
+  <div id="sinBle" class="tarjeta">
+    <h2>Este navegador no tiene Bluetooth web</h2>
+    <p class="nota">En iPhone abre esta página con la app gratuita <b>Bluefy – Web BLE Browser</b> (Safari no lo soporta).
+      En Android o en la computadora usa Chrome o Edge.</p>
+  </div>
+
+  <!-- ===== Contactos ===== -->
+  <section id="v-contactos" class="vista activa">
+    <div class="tarjeta">
+      <h2>Contactos de emergencia</h2>
+      <p class="nota">Si hay una caída o se presiona el SOS, se manda SMS a todos y se llama en este orden hasta que alguien conteste. Máximo 5.</p>
+      <div id="lista"></div>
+    </div>
+
+    <div class="tarjeta">
+      <h2 id="tituloForm">Agregar contacto</h2>
+      <form id="form" autocomplete="off">
+        <label for="nombre">Nombre</label>
+        <input id="nombre" maxlength="24" placeholder="Ej. Mamá" required>
+        <label for="tel">Teléfono (10 dígitos)</label>
+        <input id="tel" type="tel" inputmode="numeric" maxlength="16" placeholder="6641234567" required>
+        <div class="botones">
+          <button type="submit" id="btnGuardar">Agregar</button>
+          <button type="button" id="btnCancelar" class="sec" style="display:none">Cancelar</button>
+        </div>
+        <div id="avisoForm" class="aviso"></div>
+      </form>
+    </div>
+
+    <div class="tarjeta">
+      <h2>Sincronizar con el dispositivo</h2>
+      <p class="nota">Con el dispositivo conectado, los cambios se envían solos. Usa estos botones si reiniciaste la XIAO o si quieres traer los que ya tiene guardados.</p>
+      <div class="botones">
+        <button id="btnSync" disabled>Enviar al dispositivo</button>
+        <button id="btnTraer" class="sec" disabled>Traer del dispositivo</button>
+      </div>
+      <div id="avisoSync" class="aviso"></div>
+    </div>
+  </section>
+
+  <!-- ===== Dispositivo ===== -->
+  <section id="v-dispositivo" class="vista">
+    <div class="tarjeta">
+      <h2>Pruebas rápidas</h2>
+      <p class="nota">La respuesta aparece en la pestaña Monitor.</p>
+      <div class="rejilla">
+        <button class="sec cmd" data-cmd="estado" disabled>Estado del módem</button>
+        <button class="sec cmd" data-cmd="caidas" disabled>Caídas detectadas</button>
+        <button class="sec cmd" data-cmd="modo prueba" disabled>Modo prueba</button>
+        <button class="sec cmd" data-cmd="modo real" disabled>Modo real</button>
+        <button class="sec cmd" data-cmd="alertas" disabled>Tiempos de alertas</button>
+        <button class="sec cmd" data-cmd="led" disabled>Probar LED</button>
+      </div>
+      <p class="nota" style="margin-top:10px"><b>Modo prueba:</b> las caídas solo vibran, no mandan nada. <b>Modo real:</b> las caídas mandan la alerta.</p>
+    </div>
+    <div class="tarjeta">
+      <h2>Simular una alerta</h2>
+      <p class="nota">Empieza la cuenta de 10 s (vibración). Si nadie la cancela con el botón, se mandan SMS reales y se llama a los contactos.</p>
+      <button id="btnAlerta" class="peligro" style="width:100%" disabled>Simular alerta</button>
+    </div>
+  </section>
+
+  <!-- ===== Monitor ===== -->
+  <section id="v-monitor" class="vista">
+    <pre id="log"></pre>
+    <form class="entrada" id="formCmd">
+      <input id="cmd" placeholder="Comando (ayuda, contactos, imu lento...)" autocapitalize="off" autocorrect="off" spellcheck="false" disabled>
+      <button id="btnEnviar" disabled>Enviar</button>
+    </form>
+    <div class="fila" style="justify-content:space-between">
+      <label class="chk"><input type="checkbox" id="auto" checked> Desplazar solo</label>
+      <button class="sec mini" id="btnLimpiar" type="button">Limpiar</button>
+    </div>
+  </section>
+</main>
+
+<script>
+// ---------- Protocolo de la XIAO (servicio UART de Nordic) ----------
+const NUS = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
+const RX  = '6e400002-b5a3-f393-e0a9-e50e24dcca9e';   // la app escribe aquí
+const TX  = '6e400003-b5a3-f393-e0a9-e50e24dcca9e';   // la XIAO responde aquí
+const MAX = 5;
+const $ = id => document.getElementById(id);
+const enc = new TextEncoder(), dec = new TextDecoder();
+
+let dispositivo = null, rxChar = null, conectado = false;
+let pendienteTx = '', esperando = null, recolector = null;
+let cola = Promise.resolve(), timerSync = null, sincronizando = false;
+
+// ---------- Contactos guardados en el teléfono ----------
+let contactos = [];
+try { contactos = JSON.parse(localStorage.getItem('vs_contactos') || '[]'); } catch (e) { contactos = []; }
+let pendientes = false;
+try { pendientes = localStorage.getItem('vs_pendientes') === '1'; } catch (e) {}
+function guardarLocal() {
+  try { localStorage.setItem('vs_contactos', JSON.stringify(contactos)); localStorage.setItem('vs_pendientes', pendientes ? '1' : '0'); } catch (e) {}
+}
+const soloDigitos = t => (t || '').replace(/\D/g, '');
+function telCorto(t) { let d = soloDigitos(t); if (d.length === 12 && d.startsWith('52')) d = d.slice(2); return d; }
+function telBonito(t) { const d = telCorto(t); return d.length === 10 ? d.slice(0,3) + ' ' + d.slice(3,6) + ' ' + d.slice(6) : t; }
+const limpiarNombre = n => n.replace(/[,\r\n]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 24);
+
+let editando = -1;
+function pintarLista() {
+  const l = $('lista'); l.innerHTML = '';
+  if (!contactos.length) { l.innerHTML = '<div class="vacio">Aún no hay contactos. Agrega el primero abajo.</div>'; }
+  contactos.forEach((c, i) => {
+    const d = document.createElement('div'); d.className = 'contacto';
+    d.innerHTML = `<div class="prio">${i + 1}</div>
+      <div class="datos"><b></b><span>${telBonito(c.tel)}</span></div>
+      <div class="acciones">
+        <button class="sec mini" data-a="up" ${i === 0 ? 'disabled' : ''} aria-label="Subir">▲</button>
+        <button class="sec mini" data-a="down" ${i === contactos.length - 1 ? 'disabled' : ''} aria-label="Bajar">▼</button>
+        <button class="sec mini" data-a="edit" aria-label="Editar">✎</button>
+        <button class="peligro mini" data-a="del" aria-label="Borrar">✕</button>
+      </div>`;
+    d.querySelector('b').textContent = c.nombre;
+    d.querySelectorAll('button').forEach(b => b.onclick = ev => accion(b.dataset.a, i, ev.currentTarget));
+    l.appendChild(d);
+  });
+  $('btnGuardar').disabled = editando < 0 && contactos.length >= MAX;
+  if (editando < 0 && contactos.length >= MAX) aviso('avisoForm', 'info', 'Ya tienes 5 contactos (el máximo). Borra uno para agregar otro.');
+  else if ($('avisoForm').classList.contains('info')) aviso('avisoForm', '', '');
+}
+function accion(a, i, b) {
+  if (a === 'up' && i > 0) [contactos[i - 1], contactos[i]] = [contactos[i], contactos[i - 1]];
+  else if (a === 'down' && i < contactos.length - 1) [contactos[i + 1], contactos[i]] = [contactos[i], contactos[i + 1]];
+  else if (a === 'edit') {
+    editando = i; $('nombre').value = contactos[i].nombre; $('tel').value = telCorto(contactos[i].tel);
+    $('tituloForm').textContent = 'Editar contacto ' + (i + 1); $('btnGuardar').textContent = 'Guardar cambios';
+    $('btnCancelar').style.display = ''; $('nombre').focus(); pintarLista(); return;
+  }
+  else if (a === 'del') {
+    if (b.dataset.confirmar !== '1') { b.dataset.confirmar = '1'; b.textContent = '¿Borrar?'; setTimeout(() => pintarLista(), 2500); return; }
+    contactos.splice(i, 1); if (editando === i) cancelarEdicion();
+  }
+  cambio();
+}
+function cancelarEdicion() {
+  editando = -1; $('form').reset(); $('tituloForm').textContent = 'Agregar contacto';
+  $('btnGuardar').textContent = 'Agregar'; $('btnCancelar').style.display = 'none';
+}
+$('btnCancelar').onclick = () => { cancelarEdicion(); pintarLista(); };
+$('form').onsubmit = e => {
+  e.preventDefault();
+  const nombre = limpiarNombre($('nombre').value), tel = soloDigitos($('tel').value);
+  if (!nombre) return aviso('avisoForm', 'error', 'Escribe un nombre.');
+  if (tel.length !== 10) return aviso('avisoForm', 'error', 'El teléfono debe tener 10 dígitos (sin +52).');
+  if (contactos.some((c, i) => i !== editando && telCorto(c.tel) === tel)) return aviso('avisoForm', 'error', 'Ese teléfono ya está en la lista.');
+  if (editando >= 0) contactos[editando] = { nombre, tel }; else contactos.push({ nombre, tel });
+  aviso('avisoForm', 'ok', editando >= 0 ? 'Contacto actualizado.' : 'Contacto agregado.');
+  cancelarEdicion(); cambio();
+};
+function cambio() {
+  pendientes = true; guardarLocal(); pintarLista(); estadoSync();
+  if (conectado) { clearTimeout(timerSync); timerSync = setTimeout(sincronizar, 600); }
+}
+function estadoSync() {
+  if (sincronizando) return;
+  if (!conectado) aviso('avisoSync', pendientes ? 'info' : '', pendientes ? 'Hay cambios sin enviar: se envían al conectar el dispositivo.' : '');
+}
+function aviso(id, tipo, txt) { const a = $(id); a.className = 'aviso' + (tipo ? ' ' + tipo : ''); a.textContent = txt; }
+
+// ---------- Bluetooth ----------
+function escribirLog(txt, clase) {
+  const log = $('log'), s = document.createElement('span');
+  if (clase) s.className = clase; s.textContent = txt; log.appendChild(s);
+  while (log.childNodes.length > 3000) log.removeChild(log.firstChild);
+  if ($('auto').checked) log.scrollTop = log.scrollHeight;
+}
+function alRecibir(texto) {
+  pendienteTx += texto;
+  let p;
+  while ((p = pendienteTx.indexOf('\n')) >= 0) {
+    const linea = pendienteTx.slice(0, p).replace(/\r$/, ''); pendienteTx = pendienteTx.slice(p + 1);
+    const esResp = /^(OK|ERR) /.test(linea);
+    escribirLog(linea + '\n', esResp ? 'ok' : '');
+    if (esResp && esperando) { const r = esperando; esperando = null; r(linea); }
+    if (recolector) recolector(linea);
+  }
+}
+function enviar(texto) {
+  // se encolan para no mandar dos escrituras al mismo tiempo (Bluetooth las rechaza)
+  cola = cola.then(async () => {
+    if (!rxChar) throw new Error('sin conexión');
+    const datos = enc.encode(texto + '\n');
+    for (let i = 0; i < datos.length; i += 20) {         // pedazos de 20 bytes (MTU mínimo)
+      const parte = datos.slice(i, i + 20);
+      if (rxChar.properties.writeWithoutResponse && rxChar.writeValueWithoutResponse) await rxChar.writeValueWithoutResponse(parte);
+      else await rxChar.writeValue(parte);
+    }
+  }).catch(e => { escribirLog('Error al enviar: ' + e.message + '\n', 'sys'); throw e; });
+  return cola;
+}
+function enviarYEsperar(texto, ms = 3000) {
+  return new Promise(resolve => {
+    const t = setTimeout(() => { esperando = null; resolve('SIN RESPUESTA'); }, ms);
+    esperando = l => { clearTimeout(t); resolve(l); };
+    enviar(texto).catch(() => { clearTimeout(t); esperando = null; resolve('ERROR'); });
+  });
+}
+function ponerEstado(txt, clase) { const e = $('estado'); e.textContent = txt; e.className = 'pildora' + (clase ? ' ' + clase : ''); }
+function habilitar(on) {
+  conectado = on;
+  ['btnSync', 'btnTraer', 'btnAlerta', 'cmd', 'btnEnviar'].forEach(id => $(id).disabled = !on);
+  document.querySelectorAll('.cmd').forEach(b => b.disabled = !on);
+  $('btnConectar').textContent = on ? 'Desconectar' : 'Conectar';
+  ponerEstado(on ? 'Conectado' : 'Desconectado', on ? 'on' : '');
+  estadoSync();
+}
+async function conectar() {
+  if (!navigator.bluetooth) { $('sinBle').style.display = 'block'; return; }
+  try {
+    ponerEstado('Buscando…', 'busy');
+    dispositivo = await navigator.bluetooth.requestDevice({ filters: [{ namePrefix: 'VitaSense' }, { services: [NUS] }], optionalServices: [NUS] });
+    dispositivo.addEventListener('gattserverdisconnected', alDesconectar);
+    ponerEstado('Conectando…', 'busy');
+    const srv = await dispositivo.gatt.connect();
+    const nus = await srv.getPrimaryService(NUS);
+    rxChar = await nus.getCharacteristic(RX);
+    const txChar = await nus.getCharacteristic(TX);
+    txChar.addEventListener('characteristicvaluechanged', e => alRecibir(dec.decode(e.target.value, { stream: true })));
+    await txChar.startNotifications();
+    habilitar(true);
+    escribirLog('--- conectado a ' + (dispositivo.name || 'XIAO') + ' ---\n', 'sys');
+    if (pendientes) sincronizar();
+    else if (vistaActual === 'monitor') enviar('monitor').catch(() => {});
+  } catch (e) {
+    ponerEstado('Desconectado');
+    if (e.name !== 'NotFoundError') escribirLog('No se pudo conectar: ' + e.message + '\n', 'sys');
+  }
+}
+function alDesconectar() { rxChar = null; esperando = null; escribirLog('--- desconectado ---\n', 'sys'); habilitar(false); }
+$('btnConectar').onclick = () => {
+  if (conectado && dispositivo) dispositivo.gatt.disconnect(); else conectar();
+};
+
+// Enviar la lista completa: DEL_ALL y luego REG:prioridad,teléfono,nombre
+async function sincronizar() {
+  if (!conectado || sincronizando) return;
+  sincronizando = true; $('btnSync').disabled = true;
+  aviso('avisoSync', 'info', 'Enviando contactos…');
+  let ok = true;
+  const r0 = await enviarYEsperar('DEL_ALL');
+  if (!r0.startsWith('OK')) ok = false;
+  for (let i = 0; ok && i < contactos.length; i++) {
+    aviso('avisoSync', 'info', `Enviando ${i + 1} de ${contactos.length}…`);
+    const c = contactos[i];
+    const r = await enviarYEsperar(`REG:${i + 1},${telCorto(c.tel)},${limpiarNombre(c.nombre)}`);
+    if (!r.startsWith('OK')) { ok = false; aviso('avisoSync', 'error', `El dispositivo no aceptó a ${c.nombre} (${r}).`); }
+  }
+  sincronizando = false; $('btnSync').disabled = !conectado;
+  if (ok) { pendientes = false; guardarLocal(); aviso('avisoSync', 'ok', contactos.length ? `Listo: ${contactos.length} contacto(s) guardado(s) en el dispositivo.` : 'Listo: el dispositivo quedó sin contactos.'); }
+  else if (!$('avisoSync').classList.contains('error')) aviso('avisoSync', 'error', 'El dispositivo no respondió. Revisa que siga conectado e inténtalo otra vez.');
+}
+$('btnSync').onclick = sincronizar;
+
+// Traer los contactos que la XIAO ya tiene (lee la respuesta del comando "contactos")
+$('btnTraer').onclick = async () => {
+  if (!conectado) return;
+  aviso('avisoSync', 'info', 'Leyendo los contactos del dispositivo…');
+  const encontrados = [];
+  recolector = l => {
+    const m = l.match(/^#\s+([1-5])\.\s+(.+?)\s{2,}(\+?\d{10,13})\s*$/);
+    if (m) encontrados.push({ p: +m[1], nombre: m[2] === '(sin nombre)' ? 'Contacto ' + m[1] : m[2], tel: telCorto(m[3]) });
+  };
+  try { await enviar('contactos'); } catch (e) {}
+  await new Promise(r => setTimeout(r, 2000));
+  recolector = null;
+  if (!encontrados.length) { aviso('avisoSync', 'info', 'El dispositivo no tiene contactos guardados (o no respondió).'); return; }
+  encontrados.sort((a, b) => a.p - b.p);
+  contactos = encontrados.slice(0, MAX).map(c => ({ nombre: c.nombre, tel: c.tel }));
+  pendientes = false; guardarLocal(); cancelarEdicion(); pintarLista();
+  aviso('avisoSync', 'ok', `Se trajeron ${contactos.length} contacto(s) del dispositivo.`);
+};
+
+// ---------- Dispositivo y monitor ----------
+document.querySelectorAll('.cmd').forEach(b => b.onclick = () => { irA('monitor'); mandarComando(b.dataset.cmd); });
+$('btnAlerta').onclick = e => {
+  const b = e.currentTarget;
+  if (b.dataset.confirmar !== '1') {
+    b.dataset.confirmar = '1'; b.textContent = 'Toca otra vez para confirmar';
+    setTimeout(() => { b.dataset.confirmar = ''; b.textContent = 'Simular alerta'; }, 4000); return;
+  }
+  b.dataset.confirmar = ''; b.textContent = 'Simular alerta';
+  irA('monitor'); mandarComando('alerta');
+};
+function mandarComando(t) { escribirLog('> ' + t + '\n', 'tx'); enviar(t).catch(() => {}); }
+$('formCmd').onsubmit = e => { e.preventDefault(); const t = $('cmd').value.trim(); if (!t) return; $('cmd').value = ''; mandarComando(t); };
+$('btnLimpiar').onclick = () => { $('log').textContent = ''; };
+
+let vistaActual = 'contactos';
+function irA(v) {
+  vistaActual = v;
+  document.querySelectorAll('nav button').forEach(b => b.classList.toggle('activa', b.dataset.vista === v));
+  document.querySelectorAll('.vista').forEach(s => s.classList.toggle('activa', s.id === 'v-' + v));
+  if (v === 'monitor' && conectado) enviar('monitor').catch(() => {});   // enciende el espejo del monitor serie
+}
+document.querySelectorAll('nav button').forEach(b => b.onclick = () => irA(b.dataset.vista));
+
+if (!navigator.bluetooth) $('sinBle').style.display = 'block';
+pintarLista(); estadoSync();
+</script>
+</body>
+</html>
