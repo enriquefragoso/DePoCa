@@ -1,0 +1,394 @@
+==========================================================================================
+  DePoCa - Detector de caídas portátil para adultos mayores sin supervisión
+  Guía de comandos del monitor serie · firmware v1.8.0
+==========================================================================================
+
+CÓMO ABRIR EL MONITOR
+---------------------
+  Opción 1 - USB:
+    Arduino IDE > Herramientas > Monitor serie.
+    Velocidad: 115200 baudios.  Fin de línea: "Nueva línea".
+    Escribe el comando en la barra de arriba y presiona Enter.
+
+  Opción 2 - Bluetooth (app DePoCa):
+    En la app toca "Modo desarrollador" (abajo), conéctate y abre la pestaña "Monitor".
+    Los comandos se escriben en la caja de abajo y funcionan igual que por USB.
+
+  Notas:
+    - No importan mayúsculas o minúsculas: "INFO" e "info" son lo mismo.
+    - Lo que empieza con "#" en el monitor son mensajes de DePoCa.
+    - Lo que empieza con "# <" es lo que responde el módem.
+
+
+MODOS
+-----
+  REAL   (siempre arranca así al encenderse)
+         Usa los parámetros fijos del código. No se pueden cambiar.
+
+  PRUEBA Hace exactamente la misma secuencia que el modo real, pero puedes cambiar
+         todos los parámetros con "param". Al volver a modo real (o al reiniciar),
+         todos los parámetros regresan a sus valores fijos.
+
+
+SECUENCIA DE ALERTA (resumen)
+-----------------------------
+  Empieza por una caída detectada o por el botón mantenido 2 s.
+  1. Vibra 10 s. Una pulsación del botón la CANCELA (no se avisa a nadie).
+  2. Para cada contacto, en orden de prioridad:
+       a) SMS: "DePoCa ALERTA: ... Le vamos a llamar: conteste y presione 1 ..."
+       b) Llamada:
+          NOTIFICACIÓN BUENA -> presiona una tecla, o contesta y cuelga antes de 15 s.
+                                Se esperan 15 min; si nadie presiona el botón, sigue con el siguiente.
+          NOTIFICACIÓN MALA  -> no contesta en 30 s, ocupado, falla, o sigue conectada
+                                15 s sin tecla (buzón de voz). Sigue con el siguiente.
+  3. Después del último contacto vuelve al primero.
+  4. SOLO se detiene presionando el botón (o con "parar" en modo prueba).
+
+
+==========================================================================================
+  COMANDOS
+==========================================================================================
+
+---------------------------------------------- GENERAL -----------------------------------
+
+ayuda
+  Muestra la lista corta de comandos.
+
+info
+  Muestra: versión del firmware, modo (real/prueba), estado de la alerta (si hay una en
+  curso: cuánto lleva, cuántas llamadas, a quién le toca), número de contactos, si la IMU
+  está conectada, estado del módem y de la red, voltaje de la batería y si el monitor
+  Bluetooth está encendido.
+  Ejemplo:  info
+
+bateria
+  Voltaje y porcentaje de la batería, y si está conectado el USB / cargando.
+  (También se ve en la app, modo desarrollador, pestaña Dispositivo, cada 15 s.)
+  También dice en qué porcentaje toca el siguiente SMS de batería baja.
+  Ejemplo:  bateria   ->   # Batería: 3.87 V = 60 % · USB: no
+                           # Aviso por SMS de batería baja: al llegar a 15 % (crítica < 15 %)
+  Ver "BATERÍA (porcentaje)" más abajo para saber cómo se calcula.
+
+
+---------------------------------------------- CONTACTOS ---------------------------------
+
+contactos
+  Muestra los contactos guardados en el orden en que se avisa (1 = el primero).
+  Ejemplo:  contactos
+
+contacto N TEL NOMBRE
+  Guarda (o reemplaza) el contacto de prioridad N.
+    N       1 a 5 (1 = se le avisa primero)
+    TEL     10 dígitos (se le agrega +52 solo). Si ya trae +, se respeta.
+    NOMBRE  opcional; puede llevar espacios.
+  Ejemplos:  contacto 1 6641234567 Mama
+             contacto 2 6649876543 Tio Juan
+
+borrar N
+  Borra el contacto de prioridad N (1 a 5).
+  Ejemplo:  borrar 3
+
+borrar todos
+  Borra todos los contactos.
+
+avisar
+  Manda un SMS a CADA contacto explicando que es contacto de emergencia y que, si DePoCa
+  le llama, debe contestar y presionar 1. Úsalo después de agregar o cambiar contactos.
+  (Es lo mismo que el botón "Mandar SMS de aviso" de la app.) Usa saldo de la SIM.
+  No funciona mientras hay una alerta en curso.
+  Ejemplo:  avisar
+
+
+---------------------------------------------- MODOS Y PARÁMETROS ------------------------
+
+modo
+  Dice en qué modo está (REAL o PRUEBA).
+
+modo prueba
+  Cambia a modo prueba: se pueden cambiar los parámetros.
+
+modo real
+  Regresa a modo real: todos los parámetros vuelven a sus valores fijos.
+
+param
+  Lista todos los parámetros con su valor actual, su unidad y para qué sirven.
+  Si alguno no está en su valor fijo, aparece "(fijo: X)" junto a él.
+
+param NOMBRE VALOR
+  Cambia un parámetro (solo en modo prueba). Si el valor está fuera de rango, lo avisa y
+  no lo cambia. La lista completa está más abajo en "PARÁMETROS".
+  Ejemplos:  param espera 60
+             param buzon 12
+             param simular 1
+
+param reset
+  Regresa todos los parámetros a sus valores fijos sin salir del modo prueba.
+
+
+---------------------------------------------- DETECCIÓN DE CAÍDAS -----------------------
+
+caidas
+  Cuántos golpes ("eventos") ha revisado, cuántos fueron caídas y los umbrales principales.
+  Cada vez que hay un golpe fuerte, el monitor muestra una línea "EVENTO" con: duración de
+  la caída libre, fuerza del golpe, cambio de postura, si se quedó quieto y si fue CAIDA o
+  descartado. Esas líneas sirven para ajustar los umbrales.
+
+imu
+  Enciende/apaga los datos de la IMU en CSV a 50 Hz (para graficar o copiar a Excel):
+  t_ms, ax_g, ay_g, az_g, gx_dps, gy_dps, gz_dps, a_total_g
+  Escribe "imu" otra vez para apagarlo.
+
+imu lento
+  Datos de la IMU en texto legible, 2 veces por segundo.
+
+imu N
+  Datos de la IMU cada N milisegundos (20 a 5000). De 200 ms en adelante sale en texto;
+  menos de 200 ms sale en CSV.
+  Ejemplo:  imu 100
+
+  Por Bluetooth usa "imu lento" o "imu 200": a 50 Hz salen más datos de los que el
+  Bluetooth alcanza a mandar y se pierden líneas.
+
+
+---------------------------------------------- ALERTAS -----------------------------------
+
+alerta
+  Empieza la secuencia de alerta igual que una caída (con los 10 s de vibración).
+  En modo REAL llama y manda SMS de verdad. Se detiene con el botón.
+
+alerta ya
+  Igual, pero sin los 10 s de vibración (empieza a avisar de inmediato).
+
+alertas
+  Tabla con el tiempo desde que empezó cada alerta hasta que sonó el primer teléfono
+  (incluye la cuenta de 10 s y el SMS). Meta del proyecto: menos de 30 s.
+  Guarda las últimas 10 alertas.
+
+alertas borrar
+  Borra esa tabla.
+
+parar
+  (Solo modo prueba) Detiene la alerta en curso, como si se presionara el botón.
+  En modo real la alerta SOLO se detiene con el botón.
+
+contesto
+colgo
+buzon
+  (Solo modo prueba con "param simular 1", durante una llamada simulada)
+  Simulan lo que pasa del otro lado de la llamada:
+    contesto  -> una persona contesta y presiona 1      = notificación BUENA
+    colgo     -> una persona contesta y cuelga enseguida = notificación BUENA
+    buzon     -> contesta el buzón de voz (ni tecla ni cuelga): a los "buzon" segundos
+                 = notificación MALA
+  Si no escribes nada, la llamada simulada "no contesta" a los "timbre" segundos.
+
+  Ejemplo de prueba completa sin gastar saldo:
+    modo prueba
+    param simular 1
+    param espera 30
+    alerta ya
+    (cuando diga "llamando a ...")  buzon
+    (en la siguiente llamada)        contesto
+    (espera 30 s, sigue con el siguiente)
+    parar
+
+
+---------------------------------------------- MÓDEM -------------------------------------
+
+estado
+  Revisa el módem: si responde, si la SIM está lista, la señal (CSQ y dBm) y si está
+  registrado en la red. No funciona durante una alerta.
+
+num TEL
+  Pone un número de prueba para "sms" y "llamar" (10 dígitos). Si no pones ninguno,
+  esos comandos usan el contacto 1.
+  Ejemplo:  num 6641234567
+
+sms
+  Manda un SMS de prueba al número de prueba (o al contacto 1).
+
+llamar
+  Llama al número de prueba (o al contacto 1). La llamada NO se cuelga sola.
+  Al terminar, el monitor dice cuántos segundos estuvo CONECTADA.
+  >>> Sirve para MEDIR EL BUZÓN DE VOZ (ver "CÓMO AJUSTAR buzon", abajo).
+
+colgar
+  Cuelga la llamada actual (también rechaza una llamada entrante).
+
+AT...
+  Manda un comando directo al módem y muestra lo que responde (10 s de espera máximo).
+  Ejemplos:  AT+CSQ          (señal)
+             AT+CPIN?        (estado de la SIM)
+             AT+COPS?        (compañía)
+
+
+---------------------------------------------- LED Y BLUETOOTH ---------------------------
+
+led
+  Prueba el LED: rojo 1 s, verde 1 s, ámbar 1 s.
+
+brillo
+brillo verde N
+brillo ambar N
+  Ajusta el brillo del verde (N de 0 a 255) o cuánto verde se mezcla con el rojo para el
+  ámbar. Se ve el color 2 s. Cuando te gusten, copia los valores en el código
+  (BRILLO_VERDE_DEF y BRILLO_AMBAR_VERDE_DEF): este ajuste se pierde al reiniciar.
+  Ejemplos:  brillo verde 40
+             brillo ambar 12
+
+monitor
+monitor off
+  (Solo por Bluetooth) "monitor" enciende el envío de todo el monitor a la app;
+  "monitor off" lo apaga. La app en modo desarrollador lo enciende sola al abrir la
+  pestaña Monitor, y lo apaga al volver a modo usuario. Al desconectarse se apaga solo.
+
+
+==========================================================================================
+  PARÁMETROS  (se ven con "param"; se cambian con "param NOMBRE VALOR" en modo prueba)
+==========================================================================================
+
+  Nombre        Fijo    Rango          Unidad   Para qué sirve
+  ------------  ------  -------------  -------  ------------------------------------------
+
+  --- Secuencia de alerta ---
+  cuenta        10      0 a 60         s        Vibración para cancelar antes de empezar a
+                                                avisar. 0 = sin cuenta.
+  timbre        30      10 a 90        s        Cuánto se deja sonar cada llamada antes de
+                                                darla por no contestada (notificación mala).
+  buzon         15      3 a 60         s        Llamada conectada sin tecla: si cuelgan
+                                                ANTES de este tiempo es notificación buena;
+                                                si sigue conectada este tiempo, es el buzón
+                                                de voz (DePoCa cuelga; notificación mala).
+  espera        900     10 a 7200      s        Tras una notificación buena: tiempo para que
+                                                alguien presione el botón antes de seguir
+                                                con el siguiente contacto (900 s = 15 min).
+  pausa         3       1 a 120        s        Pausa tras una notificación mala antes de
+                                                seguir con el siguiente contacto.
+  sms           2       0 a 2          -        SMS antes de cada llamada:
+                                                  0 = nunca
+                                                  1 = solo la primera vez a cada contacto
+                                                  2 = antes de cada llamada (en cada vuelta)
+  simular       0       0 a 1          -        1 = no llama ni manda SMS de verdad; usa
+                                                contesto / colgo / buzon para simular.
+  sos           2000    500 a 10000    ms       Tiempo con el botón presionado para la
+                                                alerta SOS.
+
+  --- Batería ---
+  bat_critica   15      5 a 50         %        Batería crítica: LED rojo cada segundo y SMS
+                                                al contacto 1.
+  bat_paso      5       1 a 25         %        Después del crítico, otro SMS cada vez que
+                                                baja esta cantidad (15 -> 10 -> 5 -> 0 %).
+  bat_espera    60      5 a 600        s        Tiempo que el nivel bajo debe mantenerse antes
+                                                de mandar el SMS (evita avisos falsos por las
+                                                bajadas de voltaje al transmitir).
+  bat_prueba    0       0 a 4.3        V        0 = batería real. Otro valor = voltaje FINGIDO
+                                                para probar los avisos sin descargarla
+                                                (ignora el USB). Ej.: param bat_prueba 3.70
+
+  --- Detección de caídas ---
+  libre         0.6     0.1 a 1.0      g        Caída libre: la aceleración total baja de
+                                                este valor (en reposo vale 1 g).
+  libre_ms      60      0 a 500        ms       Duración mínima de esa caída libre.
+  impacto       2.5     1.2 a 16       g        Golpe que cuenta si hubo caída libre antes.
+  fuerte        3.5     1.5 a 16       g        Golpe que cuenta aunque NO haya caída libre.
+  ventana       1000    100 a 5000     ms       Tiempo máximo entre la caída libre y el
+                                                golpe.
+  asentar       1500    0 a 10000      ms       Espera después del golpe antes de revisar la
+                                                postura (deja que el cuerpo se asiente).
+  quieto_ms     2000    200 a 20000    ms       Cuánto tiempo se revisa que se quede quieto.
+  quieto_g      0.35    0.05 a 2       g        Cuánto se puede alejar de 1 g y seguir
+                                                contando como "quieto".
+  quieto_giro   40      1 a 500        °/s      Giro promedio máximo para contar como
+                                                "quieto".
+  angulo        45      5 a 180        grados   Cambio de postura mínimo respecto a antes
+                                                del golpe (de pie -> acostado = ~90).
+
+  Cómo se decide que fue una caída:
+    (caída libre >= libre_ms  Y  golpe > impacto dentro de "ventana")  O  golpe > fuerte
+    -> espera "asentar" -> revisa "quieto_ms": quieto Y postura cambió >= "angulo"  => CAIDA
+
+  Más sensible (detecta más, pero más falsas alarmas): bajar impacto / fuerte / angulo,
+  subir libre. Menos sensible: al revés.
+
+  Para dejar un valor fijo en modo real: cámbialo en la tabla "params[]" del código
+  (segunda columna = valor, tercera = fijo; pon el mismo número en las dos).
+
+
+==========================================================================================
+  CÓMO AJUSTAR "buzon" (medir el buzón de voz)
+==========================================================================================
+  1. num 66XXXXXXXX       (el número de alguien de cada compañía: Telcel, AT&T, ...)
+  2. llamar
+  3. Que esa persona RECHACE la llamada o tenga el teléfono apagado: entra su buzón.
+  4. No cuelgues: espera a que la llamada termine sola.
+  5. El monitor dice:  "Llamada terminada (...) · estuvo CONECTADA X s"
+  6. Repite con otras compañías y también con una persona que conteste y cuelgue.
+
+  "buzon" debe quedar:
+     por ARRIBA de lo que tarda una persona en contestar y colgar, y
+     por DEBAJO de lo que dura conectado el buzón más corto que midas.
+
+  Ojo: un buzón LLENO puede colgar solo en pocos segundos; DePoCa lo tomaría como
+  notificación buena. El monitor dice si la notificación buena fue "presionó la tecla" o
+  "contestó y colgó a los X s", para poder revisarlo.
+
+
+==========================================================================================
+  BATERÍA (porcentaje y avisos)
+==========================================================================================
+  100 % = 4.20 V   máximo del módem A7670 y voltaje de la LiPo llena.
+    0 % = 3.40 V   mínimo del módem A7670 (tablas 9 y 36 de su hoja de datos): por debajo
+                   ya no se garantizan llamadas ni SMS.
+  En medio sigue la curva de descarga típica de una LiPo de 1 celda (no es lineal):
+
+     4.20 V = 100 %    3.95 V = 70 %    3.84 V = 50 %    3.77 V = 30 %    3.69 V = 10 %
+     4.11 V =  90 %    3.91 V = 65 %    3.82 V = 45 %    3.75 V = 25 %    3.61 V =  5 %
+     4.02 V =  80 %    3.87 V = 60 %    3.80 V = 40 %    3.73 V = 20 %    3.40 V =  0 %
+
+  Niveles:
+     >= 50 %     LED verde
+     20 a 49 %   LED ámbar
+     15 a 19 %   LED rojo
+     < 15 %      CRÍTICA: LED rojo cada segundo + SMS al contacto 1
+  ¿Por qué 15 %? La hoja de datos dice que al transmitir el módem baja el voltaje hasta
+  300 mV. Con menos de ~3.71 V en reposo (15 %), en ese pico quedaría debajo de 3.4 V y una
+  llamada podría fallar.
+
+  SMS de batería baja (al contacto 1; si no hay, al primero que haya):
+    - Al llegar a crítica, y otro cada vez que baja 5 % más: 15 -> 10 -> 5 -> 0 %.
+      Texto: "DePoCa: bateria baja (13%). Por favor cargue el dispositivo: con poca
+      bateria podria no poder avisar en una emergencia."
+    - El nivel bajo debe mantenerse 60 s seguidos (evita avisos falsos).
+    - Si hay una alerta en curso, el aviso espera a que termine.
+    - Con el USB conectado no cuenta, y al cargar (o subir 10 % sobre el crítico) se
+      reinician los avisos.
+    - Si el SMS falla, se reintenta cada 5 min.
+    - Para probarlo sin descargar la batería (modo prueba):
+          modo prueba
+          param bat_prueba 3.70        (13 %: a los 60 s manda el SMS)
+          param bat_prueba 3.69        (10 %: otro SMS)
+          param bat_prueba 0           (vuelve a la batería real)
+      Con "param simular 1" el SMS no se manda de verdad (solo se ve en el monitor).
+
+  - Con el USB conectado y cargando, el voltaje sube y el porcentaje se ve más alto de lo
+    real. Desconecta el USB unos segundos para una lectura correcta.
+  - Para cambiar el 0 % o el 100 %: tabla BAT_CURVA en el código (primera y última fila).
+
+
+==========================================================================================
+  BOTÓN Y LED
+==========================================================================================
+  Botón:
+    pulsación corta (sin alerta)     -> vibra y muestra el color de la batería
+    pulsación durante la cuenta      -> CANCELA la alerta (no se avisa a nadie)
+    pulsación durante los avisos     -> DETIENE la alerta (la persona ya está atendida)
+    mantener 2 s                     -> alerta SOS
+
+  LED:
+    parpadeo cada 4 s       color de la batería: verde >= 50 %, ámbar 20-49 %, rojo < 20 %
+    parpadeo cada 1 s       batería crítica (< 15 %)
+    verde fijo              conectado al USB, cargado
+    ámbar parpadeando       conectado al USB, cargando (al encender: esperando al módem)
+    rojo + vibración        cuenta de 10 s para cancelar
+    rojo cada 1 s           avisando a los contactos
+    verde cada 2 s          alguien recibió la notificación: esperando el botón
