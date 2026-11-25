@@ -72,10 +72,55 @@
   #splash .v { margin-top: 18px; font-size: 14px; background: rgba(255,255,255,.18); padding: 5px 12px; border-radius: 99px; }
   #splash.fuera { opacity: 0; pointer-events: none; }
   .paramForm { display: flex; gap: 8px; margin-top: 10px; } .paramForm input { flex: 1; min-width: 0; }
+  .bat { display: flex; align-items: center; gap: 14px; }
+  .batPct { font-size: 34px; font-weight: 700; min-width: 92px; }
+  .batBarra { flex: 1; height: 14px; border-radius: 8px; background: var(--acento2); overflow: hidden; }
+  .batBarra div { height: 100%; width: 0; background: var(--acento); transition: width .4s; }
+  .batBarra div.media { background: #d39e00; } .batBarra div.baja { background: var(--rojo); }
   .soloPrueba { border-top: 1px dashed var(--borde); margin-top: 12px; padding-top: 10px; }
+
+  /* ===== Tema "Arduino oscuro": colores del tema Dark de Arduino IDE 2 (dark.color-theme.json) ===== */
+  body.arduino {
+    --fondo: #1f272a;      /* editor.background */
+    --tarjeta: #171e21;    /* activityBar / editorWidget.background */
+    --texto: #dae3e3;      /* foreground */
+    --suave: #b5c8c9;      /* arduino.branding.secondary */
+    --borde: #374146;      /* tree.indentGuidesStroke */
+    --acento: #0ca1a6;     /* button.background / arduino.branding.primary */
+    --acento2: #2c353a;    /* dropdown.background */
+    --rojo: #df7365;       /* errorForeground */
+    --rojo2: rgba(223, 115, 101, .14);
+    --ambar: #f1c40f;      /* arduino.toolbar.toggleBackground */
+    color-scheme: dark;
+  }
+  body.arduino header { background: #171e21; color: #edf1f1; border-bottom: 1px solid var(--borde); }
+  body.arduino button { color: #101618; }                       /* button.foreground */
+  body.arduino button.blanco { background: #0ca1a6; color: #101618; }
+  body.arduino button.sec { background: #2c353a; color: #dae3e3; box-shadow: inset 0 0 0 1px #4e5b61; }
+  body.arduino button.peligro { background: var(--rojo2); color: #df7365; }
+  body.arduino button:not(:disabled):hover { filter: brightness(1.12); }
+  body.arduino nav { background: #171e21; border-bottom-color: var(--borde); }
+  body.arduino nav button { background: none; color: #7f8c8d; }
+  body.arduino nav button.activa { color: #dae3e3; border-bottom-color: #0ca1a6; }   /* activityBar.activeBorder */
+  body.arduino footer button { background: none; color: #0ca1a6; }
+  body.arduino input { background: #000; color: #dae3e3; border-color: #4e5b61; }   /* input.background */
+  body.arduino input::placeholder { color: #7f8c8d; }
+  body.arduino input:focus { outline-color: #0ca1a6; }
+  body.arduino .tarjeta { border-color: var(--borde); }
+  body.arduino .prio { background: #2c353a; color: #0ca1a6; }
+  body.arduino .aviso.ok { background: rgba(12, 161, 166, .18); color: #7fcbcd; }
+  body.arduino .aviso.info { background: rgba(241, 196, 15, .10); color: #f1c40f; }
+  body.arduino .aviso.error { background: var(--rojo2); color: #df7365; }
+  body.arduino #log { background: #000; color: #fff; border: 1px solid var(--borde); }   /* arduino.output */
+  body.arduino #log .tx { color: #7fcbcd; } body.arduino #log .sys { color: #f1c40f; } body.arduino #log .ok { color: #3fae98; }
+  body.arduino #splash { background: #171e21; color: #edf1f1; }
+  body.arduino #splash .logo { background: #0ca1a6; color: #101618; }
+  body.arduino #splash .v { background: #2c353a; }
+  body.arduino code { color: #7fcbcd; }
 </style>
 </head>
 <body>
+<script>try { if (localStorage.getItem('depoca_tema') === 'arduino') document.body.classList.add('arduino'); } catch (e) {}</script>
 <div id="splash" onclick="this.classList.add('fuera')">
   <div class="logo">♥</div>
   <h1>DePoCa</h1>
@@ -146,6 +191,17 @@
   <!-- ===== Dispositivo ===== -->
   <section id="v-dispositivo" class="vista">
     <div class="tarjeta">
+      <h2>Batería</h2>
+      <div class="bat">
+        <div class="batPct" id="batPct">–</div>
+        <div style="flex:1">
+          <div class="batBarra"><div id="batBarra"></div></div>
+          <p class="nota" id="batDetalle" style="margin:6px 0 0">Conecta el dispositivo para leerla.</p>
+        </div>
+      </div>
+      <p class="nota" style="margin:10px 0 0">100 % = 4.20 V · 0 % = 3.40 V (mínimo del módem A7670). Crítica: menos de 15 % (se avisa por SMS al contacto 1). Se actualiza cada 15 s.</p>
+    </div>
+    <div class="tarjeta">
       <h2>Pruebas rápidas</h2>
       <p class="nota">La respuesta aparece en la pestaña Monitor.</p>
       <div class="rejilla">
@@ -215,6 +271,7 @@
 <footer>
   <div id="pieVersion"></div>
   <button id="btnModoApp" type="button"></button>
+  <button id="btnTema" type="button"></button>
 </footer>
 
 <script>
@@ -222,7 +279,7 @@
 const NUS = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
 const RX  = '6e400002-b5a3-f393-e0a9-e50e24dcca9e';   // la app escribe aquí
 const TX  = '6e400003-b5a3-f393-e0a9-e50e24dcca9e';   // la XIAO responde aquí
-const APP_VERSION = '2.2.0';
+const APP_VERSION = '2.4.1';
 const MAX = 5;
 const $ = id => document.getElementById(id);
 const enc = new TextEncoder(), dec = new TextDecoder();
@@ -247,6 +304,17 @@ function aplicarModo() {
   if (!modoDev && vistaActual !== 'contactos') irA('contactos');
   pintarVersion();
 }
+// ---------- Tema: claro o "Arduino oscuro" (colores del Arduino IDE 2 en modo oscuro) ----------
+function aplicarTema() {
+  const oscuro = document.body.classList.contains('arduino');
+  $('btnTema').textContent = oscuro ? 'Tema: Arduino oscuro' : 'Tema: claro';
+  const m = document.querySelector('meta[name=theme-color]'); if (m) m.content = oscuro ? '#171e21' : '#0f766e';
+}
+$('btnTema').onclick = () => {
+  const oscuro = document.body.classList.toggle('arduino');
+  try { localStorage.setItem('depoca_tema', oscuro ? 'arduino' : 'claro'); } catch (e) {}
+  aplicarTema();
+};
 $('btnModoApp').onclick = () => {
   modoDev = !modoDev;
   try { localStorage.setItem('depoca_dev', modoDev ? '1' : '0'); } catch (e) {}
@@ -377,7 +445,7 @@ function habilitar(on) {
   document.querySelectorAll('.cmd').forEach(b => b.disabled = !on);
   $('btnConectar').textContent = on ? 'Desconectar' : 'Conectar';
   $('btnParam').disabled = !on;
-  if (!on) verDispositivo = '';
+  if (!on) { verDispositivo = ''; $('batPct').textContent = '–'; $('batBarra').style.width = '0'; $('batDetalle').textContent = 'Conecta el dispositivo para leerla.'; }
   pintarVersion();
   ponerEstado(on ? 'Conectado' : 'Desconectado', on ? 'on' : '');
   estadoSync();
@@ -402,6 +470,7 @@ async function conectar() {
     pintarVersion();
     if (pendientes) await sincronizar();
     if (modoDev && vistaActual === 'monitor') enviar('monitor').catch(() => {});
+    if (vistaActual === 'dispositivo') leerBateria();
   } catch (e) {
     ponerEstado('Desconectado');
     if (e.name !== 'NotFoundError') escribirLog('No se pudo conectar: ' + e.message + '\n', 'sys');
@@ -468,6 +537,22 @@ $('btnAvisar').onclick = async e => {
   else aviso('avisoAvisar', 'error', 'El dispositivo no respondió. Necesita el firmware 1.7 o más nuevo.');
 };
 
+// ---------- Batería (modo desarrollador): BAT -> BAT voltaje,porcentaje,usb,cargando ----------
+async function leerBateria() {
+  if (!conectado || !modoDev || esperando || sincronizando) return;
+  const r = await enviarYEsperar('BAT', 2500, l => l.startsWith('BAT '));
+  if (!r.startsWith('BAT ')) { $('batDetalle').textContent = 'El dispositivo no respondió (necesita el firmware 1.7.2 o más nuevo).'; return; }
+  const [v, pct, usb, carga] = r.slice(4).split(',');
+  const barra = $('batBarra');
+  if (pct === '-') { $('batPct').textContent = '–'; barra.style.width = '0'; $('batDetalle').textContent = 'Sin lectura: ¿la batería está conectada?'; return; }
+  const p = +pct;
+  $('batPct').textContent = p + ' %';
+  barra.style.width = p + '%';
+  barra.className = p < 20 ? 'baja' : (p < 50 ? 'media' : '');
+  $('batDetalle').textContent = (p < 15 ? 'CRÍTICA · ' : '') + v + ' V' + (usb === '1' ? (carga === '1' ? ' · cargando por USB (el % se ve más alto de lo real)' : ' · USB conectado, carga completa') : ' · sin USB');
+}
+setInterval(() => { if (vistaActual === 'dispositivo') leerBateria(); }, 15000);
+
 // ---------- Dispositivo y monitor ----------
 document.querySelectorAll('.cmd').forEach(b => b.onclick = () => { irA('monitor'); mandarComando(b.dataset.cmd); });
 $('btnAlerta').onclick = e => {
@@ -496,11 +581,12 @@ function irA(v) {
   document.querySelectorAll('nav button').forEach(b => b.classList.toggle('activa', b.dataset.vista === v));
   document.querySelectorAll('.vista').forEach(s => s.classList.toggle('activa', s.id === 'v-' + v));
   if (v === 'monitor' && conectado && modoDev) enviar('monitor').catch(() => {});   // enciende el espejo del monitor serie
+  if (v === 'dispositivo') leerBateria();
 }
 document.querySelectorAll('nav button').forEach(b => b.onclick = () => irA(b.dataset.vista));
 
 if (!navigator.bluetooth) $('sinBle').style.display = 'block';
-pintarLista(); estadoSync(); aplicarModo();
+pintarLista(); estadoSync(); aplicarModo(); aplicarTema();
 setTimeout(() => $('splash').classList.add('fuera'), 1400);     // la versión se ve al abrir
 </script>
 </body>
